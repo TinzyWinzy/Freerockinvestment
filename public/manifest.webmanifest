@@ -1,0 +1,17 @@
+{
+  "name": "Freerock Solar & Energy",
+  "short_name": "Freerock",
+  "description": "Instant solar quotes, professional installation, and certified training in Zimbabwe.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#228B22",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" },
+    { "src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml" },
+    { "src": "/icon-maskable.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" },
+    { "src": "/logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
+  ],
+  "categories": ["business", "utilities"]
+}
