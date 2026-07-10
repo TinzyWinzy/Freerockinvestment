@@ -87,11 +87,23 @@ const containerVariants = {
 }
 
 export default function AnalyticsPage() {
+  const handleExport = () => {
+    const headers = ['Metric', 'Value', 'Change']
+    const rows = METRICS.map(m => [m.label, m.value, m.change])
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `freerock-analytics-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+  }
+
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible">
       <div className="flex items-center justify-between mb-6">
         <h1 className="heading-lg text-freerock-dark">Analytics</h1>
-        <button className="btn-secondary flex items-center gap-2 text-sm">
+        <button onClick={handleExport} className="btn-secondary flex items-center gap-2 text-sm">
           <Download className="w-4 h-4" /> Export Report
         </button>
       </div>

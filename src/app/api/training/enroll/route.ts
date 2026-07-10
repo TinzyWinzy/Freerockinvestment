@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { generateEnrollmentId } from '@/lib/utils'
+import { rateLimit } from '@/lib/rate-limit'
 import type { NextRequest } from 'next/server'
 
 const enrollSchema = z.object({
@@ -16,6 +17,12 @@ const enrollSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const { allowed } = rateLimit(`enroll:${ip}`, 3, 3600000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded. Try again later.' }, { status: 429 })
+  }
+
   try {
     const body = await request.json()
     const parsed = enrollSchema.safeParse(body)

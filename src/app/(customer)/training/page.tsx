@@ -1,15 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { GraduationCap, BookOpen, Calendar, MapPin, DollarSign, Check } from 'lucide-react'
+import { GraduationCap, BookOpen, Calendar, MapPin, DollarSign, Check, MessageCircle } from 'lucide-react'
 import { TRAINING } from '@/lib/constants'
-import { formatUSD } from '@/lib/utils'
+import { formatUSD, generateEnrollmentId } from '@/lib/utils'
 import { Container } from '@/components/Container'
 import { trainingEnrollmentSchema } from '@/lib/validations'
+import { getWhatsAppLink, trainingEnrolledMessage } from '@/lib/whatsapp'
 
 export default function TrainingPage() {
   const [submitted, setSubmitted] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [enrollmentId, setEnrollmentId] = useState('')
+  const [intakeDate, setIntakeDate] = useState('')
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -39,8 +42,14 @@ export default function TrainingPage() {
       setErrors(fieldErrors)
       return
     }
+    setEnrollmentId(generateEnrollmentId())
+    setIntakeDate(new Date(Date.now() + 7 * 86400000).toLocaleDateString('en-ZW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))
     setSubmitted(true)
   }
+
+  const whatsappLink = submitted
+    ? getWhatsAppLink(trainingEnrolledMessage({ name: form.name, enrollmentId, intakeDate }))
+    : ''
 
   if (submitted) {
     return (
@@ -50,6 +59,9 @@ export default function TrainingPage() {
         </div>
         <h1 className="text-xl font-bold text-freerock-dark">Enrollment Confirmed</h1>
         <p className="text-sm text-gray-500 mt-2">We&apos;ll send course details to your phone within 24 hours.</p>
+        <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="mt-6 flex items-center justify-center gap-2 border border-gray-200 text-gray-700 rounded-lg py-3 px-6 font-semibold text-sm">
+          <MessageCircle className="w-4 h-4 text-green-500" /> Share on WhatsApp
+        </a>
       </div>
     )
   }

@@ -4,6 +4,7 @@
   "description": "Instant solar quotes, professional installation, and certified training in Zimbabwe.",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
   "background_color": "#FFFFFF",
   "theme_color": "#228B22",
   "orientation": "portrait",
@@ -13,5 +14,10 @@
     { "src": "/icon-maskable.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" },
     { "src": "/logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
   ],
+  "screenshots": [
+    { "src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "form_factor": "narrow" }
+  ],
+  "lang": "en-ZW",
+  "dir": "ltr",
   "categories": ["business", "utilities"]
 }

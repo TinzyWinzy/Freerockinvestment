@@ -268,7 +268,13 @@ export default function LeadsPage() {
           </table>
         </div>
         {filteredLeads.length === 0 && (
-          <div className="text-center py-12 text-text-secondary">No leads found</div>
+          <div className="text-center py-16 px-4">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="font-semibold text-[#1F2937] text-base">No leads yet</h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Leads will appear here when customers request quotes. Share your Freerock PWA link to start receiving leads.</p>
+          </div>
         )}
       </div>
 
@@ -299,7 +305,13 @@ export default function LeadsPage() {
           </div>
         ))}
         {filteredLeads.length === 0 && (
-          <div className="text-center py-12 text-text-secondary">No leads found</div>
+          <div className="text-center py-16 px-4">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="font-semibold text-[#1F2937] text-base">No leads yet</h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Leads will appear here when customers request quotes. Share your Freerock PWA link to start receiving leads.</p>
+          </div>
         )}
       </div>
 

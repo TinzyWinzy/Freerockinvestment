@@ -237,7 +237,13 @@ export default function TrainingPage() {
           </table>
         </div>
         {filteredStudents.length === 0 && (
-          <div className="text-center py-8 text-text-secondary">No students found</div>
+          <div className="text-center py-16 px-4">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="font-semibold text-[#1F2937] text-base">No students enrolled</h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Students will appear here once they enroll in a training intake. Share the training page link to start receiving enrollments.</p>
+          </div>
         )}
       </div>
 

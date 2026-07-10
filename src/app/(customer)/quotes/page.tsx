@@ -37,10 +37,13 @@ export default function QuotesPage() {
       <section className="flex-1 py-4"><Container>
         {quotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-16 text-center">
-            <FileText className="w-12 h-12 text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500">No quotes yet</p>
-            <Link href="/solar" className="mt-3 text-sm font-medium text-freerock">
-              Get your first quote →
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="font-semibold text-[#1F2937] text-base">No saved quotes</h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">You haven't saved any quotes yet. Browse our solar packages to get started.</p>
+            <Link href="/solar" className="mt-4 btn-primary text-sm">
+              Browse Solar Packages
             </Link>
           </div>
         ) : (

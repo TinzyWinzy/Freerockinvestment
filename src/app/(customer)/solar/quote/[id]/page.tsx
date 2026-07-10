@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { SOLAR_PACKAGES, DEPOSIT_RATES } from '@/lib/constants'
 import { formatUSD } from '@/lib/utils'
-import { ChevronDown, ChevronUp, MessageCircle, Download } from 'lucide-react'
+import { ChevronDown, ChevronUp, MessageCircle, Download, FileText } from 'lucide-react'
+import Link from 'next/link'
 import { Container } from '@/components/Container'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { CardSkeleton } from '@/components/LoadingSkeleton'
+import { getWhatsAppLink, quoteReadyMessage } from '@/lib/whatsapp'
 
 interface QuoteData {
   id: string
@@ -45,8 +47,11 @@ function QuotePageContent() {
 
   if (!quote || !pkg) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 min-h-dvh px-4 text-center">
-        <p className="text-gray-500">Quote not found.</p>
+      <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] px-4 text-center">
+        <FileText className="w-12 h-12 text-gray-300 mb-4" />
+        <h2 className="font-semibold text-[#1F2937]">Quote not found</h2>
+        <p className="text-sm text-gray-500 mt-1">This quote may have expired or been removed.</p>
+        <Link href="/solar" className="mt-4 btn-primary text-sm">Get a New Quote</Link>
       </div>
     )
   }
@@ -55,9 +60,13 @@ function QuotePageContent() {
   const deposit = Math.round(pkg.priceUSD * depositRate)
   const balance = pkg.priceUSD - deposit
 
-  const whatsappMsg = encodeURIComponent(
-    `Hi Freerock, I'd like to proceed with my quote ${quote.id} for the ${pkg.name}.`
-  )
+  const whatsappLink = getWhatsAppLink(quoteReadyMessage({
+    name: 'Customer',
+    quoteId: quote.id,
+    packageName: pkg.name,
+    totalUsd: pkg.priceUSD,
+    depositUsd: deposit,
+  }))
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh pb-24">
@@ -121,7 +130,7 @@ function QuotePageContent() {
           Pay Deposit {formatUSD(deposit)}
         </button>
         <a
-          href={`https://wa.me/263778931251?text=${whatsappMsg}`}
+          href={whatsappLink}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center w-12 h-12 border border-gray-200 rounded-lg text-freerock"

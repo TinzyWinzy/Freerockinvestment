@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { SOLAR_PACKAGES, DEPOSIT_RATES, TV_BUNDLE_PRICES, AUDIT_SERVICES } from '@/lib/constants'
 import { generateQuoteId } from '@/lib/utils'
+import { rateLimit } from '@/lib/rate-limit'
 import type { NextRequest } from 'next/server'
 
 const quoteSchema = z.object({
@@ -24,6 +25,12 @@ const quoteSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const { allowed, remaining } = rateLimit(`quote:${ip}`, 10, 3600000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded. Try again later.' }, { status: 429 })
+  }
+
   try {
     const body = await request.json()
     const parsed = quoteSchema.safeParse(body)
