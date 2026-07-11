@@ -11,7 +11,7 @@ function Toaster({ className }: { className?: string }) {
   const removeToast = useStore((s) => s.removeToast)
 
   return (
-    <div className={cn('fixed bottom-4 right-4 z-50 flex flex-col gap-2', className)}>
+    <div className={cn('fixed bottom-24 right-4 z-50 flex flex-col gap-2 pointer-events-none', className)} aria-live="polite" aria-label="Notifications">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div
@@ -19,8 +19,9 @@ function Toaster({ className }: { className?: string }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
+            role="alert"
             className={cn(
-              'flex items-center gap-2 rounded-lg px-4 py-3 text-sm text-white shadow-lg',
+              'flex items-center gap-2 rounded-lg px-4 py-3 text-sm text-white shadow-lg pointer-events-auto',
               t.type === 'success' && 'bg-freerock',
               t.type === 'error' && 'bg-danger',
               t.type === 'info' && 'bg-text-primary'
@@ -29,6 +30,7 @@ function Toaster({ className }: { className?: string }) {
             <span className="flex-1">{t.message}</span>
             <button
               onClick={() => removeToast(t.id)}
+              aria-label="Dismiss notification"
               className="shrink-0 rounded-md p-1 hover:bg-white/20"
             >
               <X className="size-4" />

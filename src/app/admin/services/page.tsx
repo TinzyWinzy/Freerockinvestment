@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { cn } from '../../../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Package, Edit, Gift, DollarSign, Save, X, Wifi } from 'lucide-react'
+import { API } from '@/lib/api'
 
 interface PackageItem {
   id: number
@@ -48,6 +49,20 @@ export default function ServicesPage() {
   const [editingPkg, setEditingPkg] = useState<PackageItem | null>(null)
   const [editForm, setEditForm] = useState({ name: '', price: 0, description: '' })
   const [tvBundle, setTvBundle] = useState('Free 32" LED TV with Premium 10kW')
+  const [rateSaved, setRateSaved] = useState(false)
+  const [rateSaving, setRateSaving] = useState(false)
+
+  const saveRate = async () => {
+    setRateSaving(true)
+    try {
+      const res = await API.rate.update(parseFloat(rbzRate) || 0)
+      if (!res.error) {
+        setRateSaved(true)
+        setTimeout(() => setRateSaved(false), 2000)
+      }
+    } catch { }
+    setRateSaving(false)
+  }
 
   const togglePackage = (id: number) => {
     setPackages(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p))
@@ -241,8 +256,8 @@ export default function ServicesPage() {
                   onChange={e => setRbzRate(e.target.value)}
                   className="flex-1 px-3 py-2.5 border border-border/50 rounded-xl text-sm bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-freerock/20 focus:border-freerock focus:bg-white transition-all"
                 />
-                <button className="px-3 py-2.5 bg-gradient-to-r from-freerock to-freerock-lime text-white rounded-xl text-sm font-medium hover:shadow-lg hover:shadow-freerock/30 transition-all cursor-pointer border-none">
-                  <Save className="w-4 h-4" />
+                <button onClick={saveRate} disabled={rateSaving} className="px-3 py-2.5 bg-gradient-to-r from-freerock to-freerock-lime text-white rounded-xl text-sm font-medium hover:shadow-lg hover:shadow-freerock/30 transition-all cursor-pointer border-none">
+                  {rateSaving ? <span className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Save className="w-4 h-4" />}
                 </button>
               </div>
               <p className="text-xs text-text-tertiary mt-3 flex items-center gap-1">
@@ -281,6 +296,9 @@ export default function ServicesPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit Package"
             className="bg-white/80 backdrop-blur-2xl rounded-2xl max-w-md w-full p-6 shadow-2xl border border-white/30"
             onClick={e => e.stopPropagation()}
           >

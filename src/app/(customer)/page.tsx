@@ -5,6 +5,7 @@ import { motion, useInView } from 'framer-motion'
 import { Sun, Ruler, Search, GraduationCap, ShieldCheck, ChevronRight, Zap, Play, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { Container } from '@/components/Container'
+import { SITE } from '@/lib/constants'
 
 const services = [
   { icon: Sun, title: 'Solar Systems', desc: 'Instant quote for your home or business', href: '/solar', color: '#228B22' },
@@ -200,7 +201,9 @@ export default function Home() {
                 Get Instant Quote <ChevronRight className="w-4 h-4" />
               </Link>
               <Link
-                href="#"
+                href={SITE.social.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-white/[0.08] backdrop-blur-lg border border-white/[0.15] text-white/90 text-sm font-semibold hover:bg-white/[0.15] hover:border-white/[0.25] hover:text-white transition-all duration-300 active:scale-95"
               >
                 <Play className="w-4 h-4 fill-current" />

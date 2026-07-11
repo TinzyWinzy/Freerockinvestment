@@ -5,55 +5,60 @@ import { useState, Suspense } from 'react'
 import { Copy, MessageCircle, FileDown } from 'lucide-react'
 import Link from 'next/link'
 import { Container } from '@/components/Container'
-import { SOLAR_PACKAGES, DEPOSIT_RATES } from '@/lib/constants'
 import { formatUSD } from '@/lib/utils'
 import { getWhatsAppLink, paymentConfirmedMessage } from '@/lib/whatsapp'
+
+interface QuoteData {
+  id: string
+  customer: { fullName: string }
+  serviceName: string
+  pricing: { subtotal: number; depositAmount: number; balance: number }
+}
 
 function ConfirmationContent() {
   const sp = useSearchParams()
   const [copied, setCopied] = useState(false)
-  const quoteId = sp.get('quoteId') || 'FRQ-202607-001'
+  const [downloadError, setDownloadError] = useState('')
+  const quoteId = sp.get('quoteId') || ''
   const method = sp.get('method') || 'Paynow'
 
-  let deposit = 1280
-  let balance = 1920
-  let total = 3200
-  let packageName = 'Solar Installation'
+  let quote: QuoteData | null = null
   try {
     const raw = localStorage.getItem(`quote-${quoteId}`)
-    if (raw) {
-      const quote = JSON.parse(raw)
-      const pkg = SOLAR_PACKAGES.find(p => p.id === quote.packageId)
-      if (pkg) {
-        packageName = pkg.name
-        total = pkg.priceUSD
-        const rate = DEPOSIT_RATES[pkg.id] || 0.3
-        deposit = Math.round(total * rate)
-        balance = total - deposit
-      }
-    }
-  } catch {}
+    if (raw) quote = JSON.parse(raw)
+  } catch { }
+
+  const customerName = quote?.customer.fullName || 'Customer'
+  const packageName = quote?.serviceName || 'Solar Installation'
+  const total = quote?.pricing.subtotal ?? 0
+  const deposit = quote?.pricing.depositAmount ?? 0
+  const balance = quote?.pricing.balance ?? 0
 
   const handleDownloadInvoice = async () => {
-    const res = await fetch('/api/invoice/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        quoteId,
-        customerName: 'Customer',
-        items: [{ name: 'Solar Package', price: 3200 }],
-        total: 3200,
-        deposit: 1280,
-      }),
-    })
-    const html = await res.text()
-    const blob = new Blob([html], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
+    setDownloadError('')
+    try {
+      const res = await fetch('/api/invoice/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quoteId,
+          customerName,
+          items: [{ name: packageName, price: total }],
+          total,
+          deposit,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      const html = await res.text()
+      const blob = new Blob([html], { type: 'text/html' })
+      window.open(URL.createObjectURL(blob), '_blank')
+    } catch {
+      setDownloadError('Could not generate the invoice. Please try again.')
+    }
   }
 
   const whatsappLink = getWhatsAppLink(paymentConfirmedMessage({
-    name: 'Customer',
+    name: customerName,
     quoteId,
     packageName,
     totalUsd: total,
@@ -83,7 +88,7 @@ function ConfirmationContent() {
             <span className="text-xs text-gray-500">Quote ID</span>
             <button onClick={handleCopy} className="flex items-center gap-1 text-xs font-medium text-[#228B22]">
               <Copy className="w-3.5 h-3.5" />
-              {copied ? 'Copied!' : 'Copy'}
+              <span aria-live="polite">{copied ? 'Copied!' : 'Copy'}</span>
             </button>
           </div>
           <p className="text-sm font-bold text-[#1F2937] mt-1">{quoteId}</p>
@@ -96,6 +101,7 @@ function ConfirmationContent() {
           <div className="flex justify-between"><span className="text-gray-500">Deposit Paid</span><span className="font-medium text-[#228B22]">{formatUSD(deposit)}</span></div>
           <div className="flex justify-between"><span className="text-gray-500">Balance Due</span><span className="font-medium text-[#1F2937]">{formatUSD(balance)}</span></div>
         </div>
+        {downloadError && <p role="alert" className="text-xs text-red-500 mt-3">{downloadError}</p>}
       </Container></div>
 
       <Container className="pb-6 space-y-2">

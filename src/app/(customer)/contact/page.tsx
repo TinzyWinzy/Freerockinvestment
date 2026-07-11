@@ -1,6 +1,7 @@
 import { Phone, Mail, MapPin, MessageCircle, Play, Camera, Music2 } from 'lucide-react'
 import { SITE } from '@/lib/constants'
 import { Container } from '@/components/Container'
+import { getWhatsAppLink } from '@/lib/whatsapp'
 
 export default function ContactPage() {
   return (
@@ -36,7 +37,7 @@ export default function ContactPage() {
         </div>
 
         <a
-          href={`https://wa.me/263778931251`}
+          href={getWhatsAppLink("Hi Freerock, I'd like to find out more about your solar services.")}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 w-full bg-green-500 text-white rounded-xl py-3 font-semibold text-sm"

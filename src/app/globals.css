@@ -163,6 +163,11 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes checkmark-draw {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+
 .skeleton {
   background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--color-border-subtle) 50%, var(--color-surface-muted) 75%);
   background-size: 200% 100%;

@@ -91,7 +91,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Paynow error: ' + params.get('error') }, { status: 502 })
     }
 
-    // Fallback: mock redirect
+    // No Paynow credentials configured (dev/demo environment): there is no
+    // live gateway to redirect to, so we do not fabricate a Paynow URL that
+    // would 404 for the customer. Record the attempt and let the client
+    // proceed straight to the confirmation step instead.
     if (isSupabaseConfigured) {
       const cookieStore = await cookies()
       const supabase = createClient(cookieStore)
@@ -99,7 +102,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      payment_url: `https://www.paynow.co.zw/interface/link/paynow?reference=${reference}`,
+      payment_url: null,
+      simulated: true,
       reference,
       amount,
       paymentMethod,

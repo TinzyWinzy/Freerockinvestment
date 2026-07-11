@@ -12,7 +12,7 @@ interface ProgressProps {
 
 function Progress({ steps = 5, currentStep = 0, className }: ProgressProps) {
   return (
-    <div className={cn('flex items-center w-full', className)}>
+    <div className={cn('flex items-center w-full', className)} role="progressbar" aria-valuenow={currentStep + 1} aria-valuemin={1} aria-valuemax={steps} aria-label={`Step ${currentStep + 1} of ${steps}`}>
       {Array.from({ length: steps }).map((_, i) => (
         <React.Fragment key={i}>
           {i > 0 && (

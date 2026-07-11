@@ -1,0 +1,835 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Freerock Solar & Energy API",
+    "version": "1.0.0",
+    "description": "Production PWA for Zimbabwe's trusted solar partner — instant quotes, Paynow payments, training enrollment, admin dashboard.\n\nBase URL: `https://freerock.co.zw` (production) or `http://localhost:3000` (development).\n\nAll endpoints that accept JSON use `Content-Type: application/json`. Protected admin routes require a valid Supabase session cookie (set via `/api/auth/otp` or admin login)."
+  },
+  "servers": [
+    { "url": "https://freerock.co.zw", "description": "Production" },
+    { "url": "http://localhost:3000", "description": "Local development" }
+  ],
+  "tags": [
+    { "name": "Quotes", "description": "Solar quote lifecycle — create, read, update status, delete" },
+    { "name": "Payments", "description": "Paynow payment initiation, verification, invoice generation" },
+    { "name": "Services", "description": "Solar packages and service discovery" },
+    { "name": "Training", "description": "Training intakes and enrollment" },
+    { "name": "Custom Design", "description": "Custom solar design requests" },
+    { "name": "Audit & Repair", "description": "Energy audit and repair bookings" },
+    { "name": "Admin", "description": "Protected admin endpoints — leads, analytics, seed" },
+    { "name": "System", "description": "Exchange rates, file upload, auth, cron" }
+  ],
+  "paths": {
+    "/api/quote": {
+      "post": {
+        "tags": ["Quotes"],
+        "summary": "Create a solar quote",
+        "description": "Calculates pricing server-side using the shared pricing engine (pricing.ts). Returns a canonical quote object regardless of Supabase persistence state.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fullName", "phone", "province", "propertyType", "roofType", "serviceId"],
+                "properties": {
+                  "fullName": { "type": "string", "example": "Tatenda Masuku" },
+                  "email": { "type": "string", "format": "email", "description": "Optional" },
+                  "phone": { "type": "string", "example": "+263 77 123 4567" },
+                  "province": { "type": "string", "example": "Harare" },
+                  "propertyType": { "type": "string", "enum": ["residential", "commercial", "industrial"] },
+                  "roofType": { "type": "string", "enum": ["tile", "corrugated", "flat", "ground"] },
+                  "serviceId": { "type": "string", "example": "5.5kva" },
+                  "payAfterInstall": { "type": "boolean", "default": true },
+                  "addons": {
+                    "type": "object",
+                    "properties": {
+                      "tvBundle": { "type": "boolean" },
+                      "extraPanels": { "type": "integer", "minimum": 0 }
+                    }
+                  },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Quote created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "quote": { "$ref": "#/components/schemas/Quote" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation failed" },
+          "429": { "description": "Rate limited (10 req/h per IP)" }
+        }
+      }
+    },
+    "/api/quote/{id}": {
+      "get": {
+        "tags": ["Quotes"],
+        "summary": "Get a quote by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "FRQ-202607-0001" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quote found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "quote": { "$ref": "#/components/schemas/Quote" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Quote not found" }
+        }
+      },
+      "patch": {
+        "tags": ["Quotes"],
+        "summary": "Update quote status",
+        "description": "Used by admin leads page and payment confirmation to mark payment_status or quote_status.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paymentStatus": { "type": "string", "enum": ["pending", "deposit_paid", "fully_paid", "refunded"] },
+                  "quoteStatus": { "type": "string", "enum": ["pending", "approved", "scheduled", "in_progress", "completed", "cancelled"] },
+                  "paymentMethod": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated quote" },
+          "400": { "description": "Validation failed" }
+        }
+      },
+      "delete": {
+        "tags": ["Quotes"],
+        "summary": "Delete a quote",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean" },
+                    "id": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/custom-design": {
+      "post": {
+        "tags": ["Custom Design"],
+        "summary": "Submit a custom solar design request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "phone", "propertySize", "energyUsage", "budget"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "propertySize": { "type": "string", "description": "Square metres" },
+                  "energyUsage": { "type": "string", "description": "Monthly kWh" },
+                  "budget": { "type": "number", "minimum": 100 },
+                  "need3D": { "type": "boolean" },
+                  "needFinancialAnalysis": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Design request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "customer": { "$ref": "#/components/schemas/Customer" },
+                        "design": { "type": "object" },
+                        "status": { "type": "string" },
+                        "createdAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation failed" },
+          "429": { "description": "Rate limited" }
+        }
+      }
+    },
+    "/api/audit-repair": {
+      "post": {
+        "tags": ["Audit & Repair"],
+        "summary": "Book an energy audit or repair",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "phone", "serviceId", "date", "location"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "serviceId": { "type": "string", "enum": ["energy-audit", "financial-audit", "system-diagnosis", "fault-repair"] },
+                  "date": { "type": "string", "format": "date" },
+                  "location": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Booking created" },
+          "400": { "description": "Validation failed" },
+          "429": { "description": "Rate limited" }
+        }
+      }
+    },
+    "/api/payment/initiate": {
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Initiate a Paynow payment",
+        "description": "Creates a Paynow checkout link or returns a simulation response when Paynow credentials are absent (dev mode).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["quoteId", "paymentMethod", "amount", "customer"],
+                "properties": {
+                  "quoteId": { "type": "string" },
+                  "paymentMethod": { "type": "string", "enum": ["ecocash", "innbucks", "telecash", "bank_transfer", "card"] },
+                  "amount": { "type": "number", "exclusiveMinimum": 0 },
+                  "customer": {
+                    "type": "object",
+                    "required": ["name", "phone"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "phone": { "type": "string" },
+                      "email": { "type": "string", "format": "email" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment initiated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "payment_url": { "type": "string", "nullable": true, "description": "Paynow checkout URL. Null when in simulation mode." },
+                    "simulated": { "type": "boolean" },
+                    "reference": { "type": "string" },
+                    "amount": { "type": "number" },
+                    "paymentMethod": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation failed" },
+          "502": { "description": "Paynow gateway error" }
+        }
+      }
+    },
+    "/api/payment/verify": {
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Paynow result URL webhook",
+        "description": "Called by Paynow after a payment completes. Accepts form-encoded data and responds with 'OK' or 'FAIL'.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reference": { "type": "string" },
+                  "paynowreference": { "type": "string" },
+                  "amount": { "type": "string" },
+                  "status": { "type": "string" },
+                  "pollurl": { "type": "string" },
+                  "hash": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Acknowledged (OK or FAIL)" }
+        }
+      },
+      "get": {
+        "tags": ["Payments"],
+        "summary": "Poll Paynow for payment status",
+        "parameters": [
+          { "name": "reference", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "paynowReference": { "type": "string" },
+                    "amount": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoice/generate": {
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Generate an HTML invoice",
+        "description": "Returns a formatted HTML document for printing/downloading.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["quoteId", "customerName", "items", "total", "deposit"],
+                "properties": {
+                  "quoteId": { "type": "string" },
+                  "customerName": { "type": "string" },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "price": { "type": "number" }
+                      }
+                    }
+                  },
+                  "total": { "type": "number" },
+                  "deposit": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "HTML invoice",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/api/training/intakes": {
+      "get": {
+        "tags": ["Training"],
+        "summary": "List upcoming training intakes",
+        "description": "Returns the next 4 intakes with dates, location, price, and available spots.",
+        "responses": {
+          "200": {
+            "description": "Intake list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "intakes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "startDate": { "type": "string", "format": "date" },
+                          "endDate": { "type": "string", "format": "date" },
+                          "duration": { "type": "string" },
+                          "location": { "type": "string" },
+                          "priceUSD": { "type": "number" },
+                          "spotsAvailable": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/training/enroll": {
+      "post": {
+        "tags": ["Training"],
+        "summary": "Enroll in a training intake",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fullName", "email", "phone", "intakeId", "isLiterate"],
+                "properties": {
+                  "fullName": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "phone": { "type": "string" },
+                  "intakeId": { "type": "string" },
+                  "isLiterate": { "type": "boolean" },
+                  "hasElectricalBackground": { "type": "boolean" },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Enrollment confirmed" },
+          "400": { "description": "Validation failed or literacy requirement not met" },
+          "429": { "description": "Rate limited (3 req/h per IP)" }
+        }
+      }
+    },
+    "/api/services": {
+      "get": {
+        "tags": ["Services"],
+        "summary": "List active solar packages",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "services": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SolarPackage" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/{id}": {
+      "get": {
+        "tags": ["Services"],
+        "summary": "Get a single service by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "5.5kva" }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "service": { "$ref": "#/components/schemas/SolarPackage" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Service not found" }
+        }
+      }
+    },
+    "/api/rate": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Get current USD/ZIG exchange rate",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pair": { "type": "string", "example": "USD/ZIG" },
+                    "rate": { "type": "number" },
+                    "source": { "type": "string" },
+                    "lastUpdated": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["System"],
+        "summary": "Override exchange rate (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["rate"],
+                "properties": {
+                  "rate": { "type": "number", "exclusiveMinimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean" },
+                    "rate": { "type": "number" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid rate value" }
+        }
+      }
+    },
+    "/api/upload": {
+      "post": {
+        "tags": ["System"],
+        "summary": "Upload a photo (JPEG/PNG/WebP, max 5MB)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Upload successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid file type or too large" }
+        }
+      }
+    },
+    "/api/auth/otp": {
+      "post": {
+        "tags": ["System"],
+        "summary": "Send a phone OTP via Supabase Auth",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone"],
+                "properties": {
+                  "phone": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP sent" },
+          "400": { "description": "Supabase auth error" },
+          "429": { "description": "Rate limited (5 req/h per phone+IP)" }
+        }
+      }
+    },
+    "/api/admin/leads": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List all quotes as leads (admin)",
+        "description": "Returns normalized lead records flat enough for table rendering. Supports filtering by status, date range.",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "leads": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Lead" }
+                    },
+                    "total": { "type": "integer" },
+                    "source": { "type": "string", "enum": ["supabase", "mock"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/analytics": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get dashboard analytics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "quotesOverTime": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "month": { "type": "string" },
+                          "count": { "type": "integer" },
+                          "totalValue": { "type": "number" }
+                        }
+                      }
+                    },
+                    "revenueByService": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "serviceId": { "type": "string" },
+                          "count": { "type": "integer" },
+                          "revenue": { "type": "number" }
+                        }
+                      }
+                    },
+                    "leadSources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source": { "type": "string" },
+                          "count": { "type": "integer" }
+                        }
+                      }
+                    },
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "totalQuotes": { "type": "integer" },
+                        "totalRevenue": { "type": "number" },
+                        "conversionRate": { "type": "number" },
+                        "averageQuoteValue": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/seed": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Create the first admin user",
+        "description": "Requires `x-admin-secret` header matching `ADMIN_SECRET` env var. Creates a Supabase auth user and inserts into `admin_users` table.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 6 },
+                  "name": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-admin-secret",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Admin created" },
+          "400": { "description": "Missing fields or Supabase error" },
+          "401": { "description": "Invalid admin secret" }
+        }
+      }
+    },
+    "/api/cron/rate": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Vercel Cron: fetch RBZ exchange rate daily",
+        "description": "Called by Vercel Cron Jobs at 06:00 CAT. Fetches the rate from an external API and stores it in Supabase.",
+        "responses": {
+          "200": { "description": "Rate fetched and stored" },
+          "502": { "description": "External rate API unavailable" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "fullName": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" },
+          "province": { "type": "string" },
+          "propertyType": { "type": "string" },
+          "roofType": { "type": "string" }
+        }
+      },
+      "QuotePricing": {
+        "type": "object",
+        "properties": {
+          "packagePrice": { "type": "number" },
+          "tvBundlePrice": { "type": "number" },
+          "installationPrice": { "type": "number" },
+          "extraPanelPrice": { "type": "number" },
+          "auditPrice": { "type": "number" },
+          "subtotal": { "type": "number" },
+          "depositRate": { "type": "number" },
+          "depositAmount": { "type": "number" },
+          "balance": { "type": "number" }
+        }
+      },
+      "Quote": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "FRQ-202607-0042" },
+          "customer": { "$ref": "#/components/schemas/Customer" },
+          "serviceId": { "type": "string" },
+          "serviceName": { "type": "string" },
+          "pricing": { "$ref": "#/components/schemas/QuotePricing" },
+          "addons": {
+            "type": "object",
+            "properties": {
+              "tvBundle": { "type": "boolean" }
+            }
+          },
+          "payAfterInstall": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["pending", "approved", "scheduled", "in_progress", "completed", "cancelled"] },
+          "paymentStatus": { "type": "string", "enum": ["pending", "deposit_paid", "fully_paid", "refunded"] },
+          "notes": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SolarPackage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "5.5kva" },
+          "name": { "type": "string", "example": "5.5kVA Solar System" },
+          "priceUSD": { "type": "number" },
+          "specs": {
+            "type": "object",
+            "properties": {
+              "inverter": { "type": "string" },
+              "battery": { "type": "string" },
+              "panels": { "type": "string" }
+            }
+          },
+          "popular": { "type": "boolean" }
+        }
+      },
+      "Lead": {
+        "type": "object",
+        "properties": {
+          "quoteId": { "type": "string" },
+          "name": { "type": "string" },
+          "phone": { "type": "string" },
+          "email": { "type": "string" },
+          "service": { "type": "string" },
+          "tier": { "type": "string" },
+          "location": { "type": "string" },
+          "depositStatus": { "type": "string", "enum": ["deposit_paid", "pending", "cancelled", "completed"] },
+          "date": { "type": "string", "format": "date" },
+          "totalUsd": { "type": "number" },
+          "depositUsd": { "type": "number" }
+        }
+      }
+    }
+  }
+}

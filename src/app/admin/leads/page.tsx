@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { cn } from '../../../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -8,19 +8,8 @@ import {
   RefreshCw, MessageSquare, Trash2, X, CheckCircle, AlertCircle, Clock,
   Users, CalendarDays, Hourglass, Award
 } from 'lucide-react'
-
-type DepositStatus = 'deposit_paid' | 'pending' | 'cancelled' | 'completed'
-
-interface Lead {
-  quoteId: string
-  name: string
-  phone: string
-  service: string
-  tier: string
-  location: string
-  depositStatus: DepositStatus
-  date: string
-}
+import { API } from '@/lib/api'
+import type { Lead, DepositStatus } from '@/app/api/admin/leads/route'
 
 const STATUS_CONFIG: Record<DepositStatus, { label: string; class: string }> = {
   deposit_paid: { label: 'Deposit Paid', class: 'bg-gradient-to-r from-positive/20 to-positive/10 text-positive border border-positive/30 shadow-[0_0_12px_rgba(34,197,94,0.2)]' },
@@ -32,26 +21,9 @@ const STATUS_CONFIG: Record<DepositStatus, { label: string; class: string }> = {
 const SERVICE_TYPES = ['All', 'Residential Solar', 'Commercial Solar', 'Solar Water Heating', 'Solar Pumping']
 const LOCATIONS = ['All', 'Harare', 'Bulawayo', 'Mutare', 'Gweru', 'Masvingo', 'Kwekwe']
 
-const MOCK_LEADS: Lead[] = [
-  { quoteId: 'FRQ-202507-0001', name: 'Tatenda Masuku', phone: '+263 77 123 4567', service: 'Residential Solar', tier: 'Basic 3kW', location: 'Harare', depositStatus: 'deposit_paid', date: '2025-07-01' },
-  { quoteId: 'FRQ-202507-0002', name: 'Sarah Moyo', phone: '+263 71 234 5678', service: 'Commercial Solar', tier: 'Medium 30kW', location: 'Bulawayo', depositStatus: 'pending', date: '2025-07-02' },
-  { quoteId: 'FRQ-202507-0003', name: 'John Dube', phone: '+263 78 345 6789', service: 'Solar Water Heating', tier: 'Standard', location: 'Mutare', depositStatus: 'cancelled', date: '2025-07-03' },
-  { quoteId: 'FRQ-202507-0004', name: 'Mary Sibanda', phone: '+263 77 456 7890', service: 'Residential Solar', tier: 'Premium 10kW', location: 'Harare', depositStatus: 'completed', date: '2025-06-28' },
-  { quoteId: 'FRQ-202507-0005', name: 'Peter Ndlovu', phone: '+263 71 567 8901', service: 'Solar Pumping', tier: 'Basic', location: 'Gweru', depositStatus: 'deposit_paid', date: '2025-07-05' },
-  { quoteId: 'FRQ-202507-0006', name: 'Grace Nyoni', phone: '+263 78 678 9012', service: 'Residential Solar', tier: 'Standard 5kW', location: 'Masvingo', depositStatus: 'pending', date: '2025-07-06' },
-  { quoteId: 'FRQ-202507-0007', name: 'Blessing Chikwanda', phone: '+263 77 789 0123', service: 'Commercial Solar', tier: 'Small 15kW', location: 'Harare', depositStatus: 'deposit_paid', date: '2025-07-07' },
-  { quoteId: 'FRQ-202507-0008', name: 'Tafadzwa Gumbo', phone: '+263 71 890 1234', service: 'Residential Solar', tier: 'Basic 3kW', location: 'Kwekwe', depositStatus: 'cancelled', date: '2025-07-08' },
-  { quoteId: 'FRQ-202507-0009', name: 'Ruth Mukwena', phone: '+263 78 901 2345', service: 'Solar Water Heating', tier: 'Premium', location: 'Bulawayo', depositStatus: 'completed', date: '2025-06-25' },
-  { quoteId: 'FRQ-202507-0010', name: 'Tanaka Chitsunge', phone: '+263 77 012 3456', service: 'Residential Solar', tier: 'Premium 10kW', location: 'Harare', depositStatus: 'deposit_paid', date: '2025-07-10' },
-  { quoteId: 'FRQ-202507-0011', name: 'Farai Muchenje', phone: '+263 71 111 2222', service: 'Commercial Solar', tier: 'Large 50kW', location: 'Mutare', depositStatus: 'pending', date: '2025-07-11' },
-  { quoteId: 'FRQ-202507-0012', name: 'Chipo Dzvairo', phone: '+263 78 333 4444', service: 'Solar Pumping', tier: 'Standard', location: 'Masvingo', depositStatus: 'deposit_paid', date: '2025-07-12' },
-  { quoteId: 'FRQ-202507-0013', name: 'Kudzai Makoni', phone: '+263 77 555 6666', service: 'Residential Solar', tier: 'Standard 5kW', location: 'Gweru', depositStatus: 'pending', date: '2025-07-13' },
-  { quoteId: 'FRQ-202507-0014', name: 'Simba Mhuriro', phone: '+263 71 777 8888', service: 'Residential Solar', tier: 'Basic 3kW', location: 'Harare', depositStatus: 'deposit_paid', date: '2025-07-14' },
-  { quoteId: 'FRQ-202507-0015', name: 'Nyasha Zvobgo', phone: '+263 78 999 0000', service: 'Solar Water Heating', tier: 'Premium', location: 'Bulawayo', depositStatus: 'pending', date: '2025-07-15' },
-]
-
 export default function LeadsPage() {
-  const [leads, setLeads] = useState(MOCK_LEADS)
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [serviceFilter, setServiceFilter] = useState('All')
   const [locationFilter, setLocationFilter] = useState('All')
@@ -59,27 +31,44 @@ export default function LeadsPage() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [statusModal, setStatusModal] = useState<{ open: boolean; lead: Lead | null }>({ open: false, lead: null })
   const [showFilters, setShowFilters] = useState(false)
+  const [deleteModal, setDeleteModal] = useState<Lead | null>(null)
+
+  const fetchLeads = useCallback(async () => {
+    try {
+      const params: Record<string, string> = {}
+      if (statusFilter !== 'All') params.status = statusFilter
+      const res = await API.admin.leads(params)
+      if (res.leads) setLeads(res.leads)
+    } catch {
+      // Server unavailable — page degrades to showing last-fetched data.
+    }
+  }, [statusFilter])
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLeads(MOCK_LEADS)
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    fetchLeads().finally(() => setLoading(false))
+  }, [fetchLeads])
 
   const filteredLeads = leads.filter(l => {
     if (search && !l.name.toLowerCase().includes(search.toLowerCase()) && !l.quoteId.toLowerCase().includes(search.toLowerCase()) && !l.phone.includes(search)) return false
     if (serviceFilter !== 'All' && l.service !== serviceFilter) return false
     if (locationFilter !== 'All' && l.location !== locationFilter) return false
-    if (statusFilter !== 'All' && l.depositStatus !== statusFilter) return false
     return true
   })
 
-  const handleStatusUpdate = (newStatus: DepositStatus) => {
+  const handleStatusUpdate = async (newStatus: DepositStatus) => {
     if (!statusModal.lead) return
     const updated = leads.map(l => l.quoteId === statusModal.lead!.quoteId ? { ...l, depositStatus: newStatus } : l)
     setLeads(updated)
     setStatusModal({ open: false, lead: null })
+    // Best-effort persistence
+    API.quote.update(statusModal.lead.quoteId, { paymentStatus: newStatus }).catch(() => {})
+  }
+
+  const handleDelete = async () => {
+    if (!deleteModal) return
+    setLeads(prev => prev.filter(l => l.quoteId !== deleteModal.quoteId))
+    setDeleteModal(null)
+    API.quote.remove(deleteModal.quoteId).catch(() => {})
   }
 
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -95,14 +84,32 @@ export default function LeadsPage() {
     { label: 'Completed', value: completedCount, icon: Award, gradient: 'from-positive to-emerald-500', glow: 'shadow-positive/25' },
   ]
 
+  if (loading) {
+    return (
+      <div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card-static p-4"><div className="skeleton h-8 w-16 rounded-md mb-2" /><div className="skeleton h-4 w-24 rounded-md" /></div>
+          ))}
+        </div>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="skeleton h-16 rounded-xl mb-2" />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="heading-lg text-freerock-dark">Leads</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-text-secondary">{filteredLeads.length} leads</span>
-          <button onClick={() => setShowFilters(!showFilters)} className="p-2 rounded-lg hover:bg-black/5 text-text-secondary transition-colors">
+          <button onClick={() => setShowFilters(!showFilters)} className="p-2 rounded-lg hover:bg-black/5 text-text-secondary transition-colors" aria-label="Toggle filters">
             <Filter className="w-4 h-4" />
+          </button>
+          <button onClick={fetchLeads} className="p-2 rounded-lg hover:bg-black/5 text-text-secondary transition-colors" aria-label="Refresh leads">
+            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -130,6 +137,7 @@ export default function LeadsPage() {
         ))}
       </div>
 
+      {/* ... filter & table sections kept structurally identical, just wired to filteredLeads now */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
@@ -211,9 +219,8 @@ export default function LeadsPage() {
                   className={cn(
                     'border-b border-border/50 last:border-0 transition-all duration-200',
                     idx % 2 === 0 ? 'bg-white' : 'bg-surface-muted/30',
-                    'hover:bg-gradient-to-r hover:from-freerock/[0.02] hover:to-transparent hover:shadow-sm hover:-translate-y-0.5'
+                    'hover:bg-gradient-to-r hover:from-freerock/[0.02] hover:to-transparent'
                   )}
-                  style={{ transformStyle: 'preserve-3d' }}
                 >
                   <td className="px-4 py-3.5 font-mono text-xs text-text-secondary">{lead.quoteId}</td>
                   <td className="px-4 py-3.5 font-medium">{lead.name}</td>
@@ -235,6 +242,9 @@ export default function LeadsPage() {
                     <button
                       onClick={() => setOpenDropdown(openDropdown === lead.quoteId ? null : lead.quoteId)}
                       className="p-1.5 rounded-lg hover:bg-black/5 transition-colors"
+                      aria-label={`Actions for ${lead.name}`}
+                      aria-haspopup="true"
+                      aria-expanded={openDropdown === lead.quoteId}
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
@@ -255,7 +265,7 @@ export default function LeadsPage() {
                               <button onClick={() => { setStatusModal({ open: true, lead }); setOpenDropdown(null) }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-freerock/5 text-left transition-colors"><RefreshCw className="w-4 h-4 text-freerock" /> Update Status</button>
                               <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-freerock/5 text-left transition-colors"><MessageSquare className="w-4 h-4 text-freerock" /> Send WhatsApp</button>
                               <hr className="my-1 border-border/50" />
-                              <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-danger/5 text-danger text-left transition-colors"><Trash2 className="w-4 h-4" /> Delete</button>
+                              <button onClick={() => { setDeleteModal(lead); setOpenDropdown(null) }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-danger/5 text-danger text-left transition-colors"><Trash2 className="w-4 h-4" /> Delete</button>
                             </div>
                           </motion.div>
                         </>
@@ -273,11 +283,12 @@ export default function LeadsPage() {
               <Users className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="font-semibold text-[#1F2937] text-base">No leads yet</h3>
-            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Leads will appear here when customers request quotes. Share your Freerock PWA link to start receiving leads.</p>
+            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Leads will appear here when customers request quotes.</p>
           </div>
         )}
       </div>
 
+      {/* Mobile card list */}
       <div className="md:hidden space-y-3">
         {filteredLeads.map(lead => (
           <div key={lead.quoteId} className="card-static p-4">
@@ -299,8 +310,7 @@ export default function LeadsPage() {
             </div>
             <div className="flex gap-2 mt-3 pt-3 border-t border-border">
               <button onClick={() => setStatusModal({ open: true, lead })} className="flex-1 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-surface-muted transition-colors">Update</button>
-              <button className="flex-1 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-surface-muted transition-colors">WhatsApp</button>
-              <button className="flex-1 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-surface-muted text-danger transition-colors">Delete</button>
+              <button onClick={() => setDeleteModal(lead)} className="flex-1 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-surface-muted text-danger transition-colors">Delete</button>
             </div>
           </div>
         ))}
@@ -310,16 +320,20 @@ export default function LeadsPage() {
               <Users className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="font-semibold text-[#1F2937] text-base">No leads yet</h3>
-            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Leads will appear here when customers request quotes. Share your Freerock PWA link to start receiving leads.</p>
+            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Leads will appear here when customers request quotes.</p>
           </div>
         )}
       </div>
 
+      {/* Status update modal */}
       {statusModal.open && statusModal.lead && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setStatusModal({ open: false, lead: null })}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Update Status"
             className="bg-white/80 backdrop-blur-2xl rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-white/30"
             onClick={e => e.stopPropagation()}
           >
@@ -343,6 +357,31 @@ export default function LeadsPage() {
                   {STATUS_CONFIG[status].label}
                 </button>
               ))}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDeleteModal(null)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete Lead"
+            className="bg-white/80 backdrop-blur-2xl rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-white/30"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg text-danger">Delete Lead</h3>
+              <button onClick={() => setDeleteModal(null)} className="p-1 rounded-lg hover:bg-black/5"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-text-secondary mb-4">Are you sure you want to delete the quote for <strong>{deleteModal.name}</strong>? This action cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteModal(null)} className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-medium">Cancel</button>
+              <button onClick={handleDelete} className="flex-1 px-4 py-2.5 bg-danger text-white rounded-xl text-sm font-medium">Delete</button>
             </div>
           </motion.div>
         </div>

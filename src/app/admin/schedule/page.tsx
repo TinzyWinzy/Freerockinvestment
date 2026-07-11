@@ -66,7 +66,7 @@ export default function SchedulePage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
-  const [events] = useState(MOCK_EVENTS)
+  const [events, setEvents] = useState(MOCK_EVENTS)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [newEvent, setNewEvent] = useState({ title: '', date: '', time: '', type: 'install' as EventType, client: '' })
@@ -104,6 +104,7 @@ export default function SchedulePage() {
       client: newEvent.client || '—',
     }
     events.push(evt)
+    setEvents([...events])
     setShowAddModal(false)
     setNewEvent({ title: '', date: '', time: '', type: 'install', client: '' })
   }
@@ -258,6 +259,9 @@ export default function SchedulePage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Event"
             className="bg-white/80 backdrop-blur-2xl rounded-2xl max-w-md w-full p-6 shadow-2xl border border-white/30"
             onClick={e => e.stopPropagation()}
           >

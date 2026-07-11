@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Home, FileText, Phone, MessageCircle, ChevronLeft } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { getWhatsAppLink } from '@/lib/whatsapp'
 
 const PAGES_WITH_OWN_HEADER = ['/custom-design', '/audit-repair', '/training', '/contact', '/solar/payment', '/solar/payment/confirmation']
 
@@ -74,7 +75,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         </header>
       )}
 
-      <main className="flex-1 flex flex-col pb-24">
+      <main className={cn('flex-1 flex flex-col', showHeader ? 'pb-14 lg:pb-0' : 'pb-24 lg:pb-0')}>
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -89,17 +90,55 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         </AnimatePresence>
       </main>
 
+      {/* ─── Desktop nav bar ─── */}
+      <header className="hidden lg:flex sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 h-14 items-center px-6">
+        <div className="flex items-center gap-3">
+          <img src="/logo.jpg" alt="Freerock" className="w-7 h-7 rounded-md object-cover" />
+          <span className="font-bold text-[#1F2937] text-sm">Freerock</span>
+        </div>
+        <nav className="ml-10 flex items-center gap-1">
+          {navItems.map((n) => {
+            const isActive = pathname === n.href
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive ? 'text-[#228B22] bg-[#228B22]/10' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                )}
+              >
+                {n.label}
+              </Link>
+            )
+          })}
+        </nav>
+      </header>
+
+      {/* ─── Floating WhatsApp (hidden on lg+) ─── */}
       <a
-        href="https://wa.me/263778931251"
+        href={getWhatsAppLink("Hi Freerock, I'd like to find out more about your solar services.")}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-20 right-4 z-40 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl pl-4 pr-5 py-3 flex items-center gap-2.5 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-[0_8px_24px_rgba(37,211,102,0.35)]"
+        className="lg:hidden fixed bottom-20 right-4 z-40 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl pl-4 pr-5 py-3 flex items-center gap-2.5 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-[0_8px_24px_rgba(37,211,102,0.35)]"
       >
         <MessageCircle className="w-5 h-5" />
         WhatsApp
       </a>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      {/* ─── Desktop WhatsApp button ─── */}
+      <a
+        href={getWhatsAppLink("Hi Freerock, I'd like to find out more about your solar services.")}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hidden lg:flex fixed bottom-6 right-6 z-40 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl pl-4 pr-5 py-3 items-center gap-2.5 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
+      >
+        <MessageCircle className="w-5 h-5" />
+        WhatsApp
+      </a>
+
+      {/* ─── Mobile bottom nav (hidden on lg+) ─── */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="glass-nav flex items-center justify-around h-[72px] shadow-[0_-2px_20px_rgba(0,0,0,0.04)]">
           {navItems.map((n) => {
             const isActive = pathname === n.href

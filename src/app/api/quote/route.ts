@@ -2,19 +2,21 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
-import { SOLAR_PACKAGES, DEPOSIT_RATES, TV_BUNDLE_PRICES, AUDIT_SERVICES } from '@/lib/constants'
+import { SOLAR_PACKAGES } from '@/lib/constants'
 import { generateQuoteId } from '@/lib/utils'
+import { calculateSolarPricing } from '@/lib/pricing'
 import { rateLimit } from '@/lib/rate-limit'
 import type { NextRequest } from 'next/server'
 
 const quoteSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().min(1, 'Phone number is required'),
   province: z.string().min(1, 'Province is required'),
   propertyType: z.enum(['residential', 'commercial', 'industrial']),
   roofType: z.enum(['tile', 'corrugated', 'flat', 'ground']),
   serviceId: z.string().min(1, 'Service ID is required'),
+  payAfterInstall: z.boolean().optional(),
   addons: z.object({
     tvBundle: z.boolean().optional(),
     installation: z.boolean().optional(),
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { serviceId, addons, ...customer } = parsed.data
+    const { serviceId, addons, payAfterInstall: rawPayAfterInstall, notes, ...customer } = parsed.data
 
     const pkg = SOLAR_PACKAGES.find((p) => p.id === serviceId)
     if (!pkg) {
@@ -52,20 +54,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const depositRate = DEPOSIT_RATES[serviceId] ?? 0.5
-    const tvBundlePrice = addons?.tvBundle ? (TV_BUNDLE_PRICES[serviceId] ?? 0) : 0
-    const installationPrice = addons?.installation ? 0 : 0
-    const extraPanelPrice = (addons?.extraPanels ?? 0) * 150
-    const auditPrice = (addons?.auditIds ?? [])
-      .reduce((sum, id) => {
-        const audit = AUDIT_SERVICES.find((a) => a.id === id)
-        return sum + (audit?.priceUSD ?? 0)
-      }, 0)
-
-    const subtotal = pkg.priceUSD + tvBundlePrice + installationPrice + extraPanelPrice + auditPrice
-    const depositAmount = Math.round(subtotal * depositRate * 100) / 100
+    const pricing = calculateSolarPricing(serviceId, addons ?? {})!
+    const { subtotal, depositAmount } = pricing
+    const payAfterInstall = rawPayAfterInstall ?? true
 
     const quoteId = generateQuoteId()
+    const createdAt = new Date().toISOString()
+
+    // Canonical response shape — identical whether backed by Supabase or the
+    // in-memory fallback, so every downstream consumer (quote page, payment,
+    // invoice, admin leads) only ever has to handle one shape.
+    const quote = {
+      id: quoteId,
+      customer,
+      serviceId,
+      serviceName: pkg.name,
+      pricing,
+      addons: addons ?? {},
+      payAfterInstall,
+      status: 'pending',
+      paymentStatus: 'pending',
+      createdAt,
+      notes: notes ?? '',
+    }
 
     const isSupabaseConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
 
@@ -74,42 +85,19 @@ export async function POST(request: NextRequest) {
         const cookieStore = await cookies()
         const supabase = createClient(cookieStore)
 
-        const { data, error } = await supabase.from('quotes').insert({
+        await supabase.from('quotes').insert({
           quote_id: quoteId,
           service_category: 'solar_package',
-          config: body,
+          config: { ...body, fullName: customer.fullName, phone: customer.phone },
           total_usd: subtotal,
           deposit_usd: depositAmount,
-          pay_after_install: true,
-        }).select().single()
-
-        if (!error && data) {
-          return NextResponse.json({ quote: data }, { status: 201 })
-        }
+          pay_after_install: payAfterInstall,
+        })
+        // Best-effort persistence — the response is already fully formed above,
+        // so a Supabase write failure never blocks the customer's quote.
       } catch {
-        // Fall through to mock
+        // Non-critical; quote is still returned to the customer below.
       }
-    }
-
-    const quote = {
-      id: quoteId,
-      customer,
-      serviceId,
-      serviceName: pkg.name,
-      pricing: {
-        packagePrice: pkg.priceUSD,
-        tvBundlePrice,
-        installationPrice,
-        extraPanelPrice,
-        auditPrice,
-        subtotal,
-        depositRate,
-        depositAmount,
-        balance: subtotal - depositAmount,
-      },
-      addons: addons ?? {},
-      status: 'pending',
-      createdAt: new Date().toISOString(),
     }
 
     return NextResponse.json({ quote }, { status: 201 })
