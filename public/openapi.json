@@ -233,7 +233,7 @@
       "post": {
         "tags": ["Payments"],
         "summary": "Initiate a Paynow payment",
-        "description": "Creates a Paynow checkout link or returns a simulation response when Paynow credentials are absent (dev mode).",
+        "description": "Creates a Paynow transaction via `/interface/initiatetransaction` with SHA512 hash authentication. Returns a browser URL to redirect the customer to Paynow's checkout, plus a poll URL for status polling. Falls back to simulation mode when Paynow credentials are absent (dev environment).",
         "requestBody": {
           "required": true,
           "content": {
@@ -268,6 +268,7 @@
                   "type": "object",
                   "properties": {
                     "payment_url": { "type": "string", "nullable": true, "description": "Paynow checkout URL. Null when in simulation mode." },
+                    "poll_url": { "type": "string", "nullable": true, "description": "URL to poll for transaction status updates." },
                     "simulated": { "type": "boolean" },
                     "reference": { "type": "string" },
                     "amount": { "type": "number" },
@@ -285,8 +286,8 @@
     "/api/payment/verify": {
       "post": {
         "tags": ["Payments"],
-        "summary": "Paynow result URL webhook",
-        "description": "Called by Paynow after a payment completes. Accepts form-encoded data and responds with 'OK' or 'FAIL'.",
+        "summary": "Paynow ITN webhook (result URL)",
+        "description": "Called by Paynow after a payment completes. Verifies the SHA512 hash to authenticate the notification, then updates the Supabase payment record and marks the quote as deposit_paid. Responds with `OK` on success, `FAIL` on payment failure, or `403` if the hash is invalid.",
         "requestBody": {
           "required": true,
           "content": {
@@ -306,14 +307,17 @@
           }
         },
         "responses": {
-          "200": { "description": "Acknowledged (OK or FAIL)" }
+          "200": { "description": "Payment acknowledged (OK for paid, FAIL for unpaid)" },
+          "403": { "description": "Invalid SHA512 signature — payload rejected" }
         }
       },
       "get": {
         "tags": ["Payments"],
         "summary": "Poll Paynow for payment status",
+        "description": "Accepts either a `pollurl` (the URL returned by the initiation call — no auth needed) or a `reference` (queries Paynow directly using merchant credentials). Returns the current transaction status.",
         "parameters": [
-          { "name": "reference", "in": "query", "required": true, "schema": { "type": "string" } }
+          { "name": "pollurl", "in": "query", "schema": { "type": "string" }, "description": "Poll URL from payment initiation response" },
+          { "name": "reference", "in": "query", "schema": { "type": "string" }, "description": "Transaction reference (alternative to pollurl)" }
         ],
         "responses": {
           "200": {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
+import { getConfig, buildInitiateBody, parsePaynowResponse } from '@/lib/paynow'
 
 const initiateSchema = z.object({
   quoteId: z.string().min(1),
@@ -14,7 +15,13 @@ const initiateSchema = z.object({
   }),
 })
 
-async function savePaymentRecord(supabase: ReturnType<typeof createClient>, quoteId: string, amount: number, paymentMethod: string, reference: string) {
+async function savePaymentRecord(
+  supabase: ReturnType<typeof createClient>,
+  quoteId: string,
+  amount: number,
+  paymentMethod: string,
+  reference: string,
+) {
   try {
     await supabase.from('payments').insert({
       quote_id: quoteId,
@@ -24,7 +31,7 @@ async function savePaymentRecord(supabase: ReturnType<typeof createClient>, quot
       status: 'pending',
     })
   } catch {
-    // Non-critical; payment flow continues
+    // Non-critical — the payment flow continues regardless.
   }
 }
 
@@ -38,64 +45,52 @@ export async function POST(request: Request) {
 
     const { quoteId, paymentMethod, amount, customer } = parsed.data
     const reference = `FRP-${quoteId}-${Date.now().toString().slice(-6)}`
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const config = getConfig()
 
-    const isSupabaseConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
-    const paynowId = process.env.PAYNOW_MERCHANT_ID
-    const paynowKey = process.env.PAYNOW_MERCHANT_KEY
-
-    if (paynowId && paynowKey) {
-      const fields = new URLSearchParams({
-        id: paynowId,
+    if (config) {
+      const paynowBody = buildInitiateBody({
+        id: config.id,
         reference,
         amount: amount.toFixed(2),
-        currency: 'USD',
-        returnurl: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/solar/payment/confirmation?quoteId=${quoteId}`,
-        resulturl: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/payment/verify`,
-        status: 'Message',
-        additional1: customer.name,
-        additional2: customer.phone,
-        additional3: quoteId,
-        additional4: paymentMethod,
-        e: customer.email || 'customer@freerock.co.zw',
+        additionalInfo: `Freerock Solar — ${customer.name} (${paymentMethod})`,
+        returnUrl: `${siteUrl}/solar/payment/confirmation?quoteId=${quoteId}&method=${paymentMethod}`,
+        resultUrl: `${siteUrl}/api/payment/verify`,
+        authEmail: config.authEmail,
+        key: config.key,
       })
 
-      const auth = Buffer.from(`${paynowId}:${paynowKey}`).toString('base64')
-      const paynowRes = await fetch('https://www.paynow.co.zw/interface/link/paynow', {
+      const paynowRes = await fetch('https://www.paynow.co.zw/interface/initiatetransaction', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Basic ${auth}`,
-        },
-        body: fields.toString(),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: paynowBody.toString(),
+        signal: AbortSignal.timeout(15000),
       })
 
       const text = await paynowRes.text()
-      const params = new URLSearchParams(text)
+      const res = parsePaynowResponse(text)
 
-      if (params.get('status') === 'Ok') {
-        if (isSupabaseConfigured) {
+      if (res.status === 'Ok') {
+        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
           const cookieStore = await cookies()
           const supabase = createClient(cookieStore)
           await savePaymentRecord(supabase, quoteId, amount, paymentMethod, reference)
         }
 
         return NextResponse.json({
-          payment_url: params.get('browserurl'),
-          poll_url: params.get('pollurl'),
+          payment_url: res.browserurl,
+          poll_url: res.pollurl,
           reference,
           amount,
           paymentMethod,
         }, { status: 201 })
       }
 
-      return NextResponse.json({ error: 'Paynow error: ' + params.get('error') }, { status: 502 })
+      return NextResponse.json({ error: res.error || 'Paynow gateway rejected the request' }, { status: 502 })
     }
 
-    // No Paynow credentials configured (dev/demo environment): there is no
-    // live gateway to redirect to, so we do not fabricate a Paynow URL that
-    // would 404 for the customer. Record the attempt and let the client
-    // proceed straight to the confirmation step instead.
-    if (isSupabaseConfigured) {
+    // No Paynow credentials configured (dev/demo environment).
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       const cookieStore = await cookies()
       const supabase = createClient(cookieStore)
       await savePaymentRecord(supabase, quoteId, amount, paymentMethod, reference)
