@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { FileText, Trash2, X } from 'lucide-react'
+import { FileText, Trash2, X, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
 import { Container } from '@/components/Container'
 import { motion } from 'framer-motion'
+import { getWhatsAppShareLink, quoteShareMessage } from '@/lib/whatsapp'
 
 interface SavedQuote {
   id: string
@@ -86,10 +87,20 @@ export default function QuotesPage() {
                       {new Date(q.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${isPaid ? 'bg-green-50 text-green-700' : 'bg-freerock/10 text-freerock'}`}>
                       {status}
                     </span>
+                    <a
+                      href={getWhatsAppShareLink(quoteShareMessage({ name: '', quoteId: q.id, packageName: q.serviceName, totalUsd: q.pricing?.depositAmount }))}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Share quote ${q.id} via WhatsApp`}
+                      className="p-2 text-gray-400 hover:text-[#25D366]"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </a>
                     <button
                       onClick={(e) => {
                         e.preventDefault()

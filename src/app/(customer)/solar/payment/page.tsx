@@ -2,10 +2,11 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Smartphone, Building2, Landmark, CreditCard, Banknote, Check } from 'lucide-react'
+import { Smartphone, Building2, Landmark, CreditCard, Banknote, Check, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Container } from '@/components/Container'
 import { API } from '@/lib/api'
+import { getWhatsAppLink, paymentNotifyMessage } from '@/lib/whatsapp'
 
 const methods = [
   { id: 'ecocash', label: 'EcoCash', desc: 'Pay with EcoCash mobile money', icon: Smartphone },
@@ -120,6 +121,18 @@ function PaymentPageContent() {
             ))}
           </div>
           {error && <p role="alert" className="text-xs text-red-500 text-center pt-2">{error}</p>}
+
+          {selected && quote && (
+            <a
+              href={getWhatsAppLink(paymentNotifyMessage({ name: quote.customer.fullName, quoteId: quote.id, depositUsd: quote.pricing.depositAmount, paymentMethod: methods.find(m => m.id === selected)?.label }))}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-[#25D366]/30 text-[#25D366] text-sm font-semibold hover:bg-[#25D366]/5 transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Notify Freerock on WhatsApp
+            </a>
+          )}
         </Container>
       </section>
 

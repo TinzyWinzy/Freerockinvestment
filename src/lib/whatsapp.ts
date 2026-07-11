@@ -7,6 +7,7 @@ interface MessageData {
   packageName?: string
   totalUsd?: number
   depositUsd?: number
+  paymentMethod?: string
   installDate?: string
   installerName?: string
   installerPhone?: string
@@ -18,6 +19,11 @@ export function getWhatsAppLink(message: string): string {
   return `https://wa.me/${PHONE.replace('+', '')}?text=${encodeURIComponent(message)}`
 }
 
+/** Share via WhatsApp without a specific number (user picks contact). */
+export function getWhatsAppShareLink(message: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(message)}`
+}
+
 export function quoteReadyMessage(data: MessageData): string {
   return `Hi ${data.name}, your Freerock solar quote is ready!
 Quote ID: ${data.quoteId}
@@ -27,6 +33,28 @@ Deposit: $${data.depositUsd}
 Pay securely: ${SITE_URL}/solar/payment?quoteId=${data.quoteId}
 
 Questions? Reply here or call ${PHONE}`
+}
+
+export function quoteShareMessage(data: MessageData): string {
+  return `*Freerock Solar Quote*
+
+Quote ID: ${data.quoteId}
+Package: ${data.packageName || '—'}
+Total: $${data.totalUsd || '—'}
+Deposit: $${data.depositUsd || '—'}
+
+View quote: ${SITE_URL}/solar/quote/${data.quoteId}`
+}
+
+export function paymentNotifyMessage(data: MessageData): string {
+  return `*Payment Initiated — Freerock Solar*
+
+Quote: ${data.quoteId}
+Deposit: $${data.depositUsd}
+Method: ${data.paymentMethod || '—'}
+Customer: ${data.name}
+
+Customer is ready to complete payment.`
 }
 
 export function paymentConfirmedMessage(data: MessageData): string {
