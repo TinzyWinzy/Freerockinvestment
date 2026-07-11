@@ -58,14 +58,23 @@ Customer is ready to complete payment.`
 }
 
 export function paymentConfirmedMessage(data: MessageData): string {
-  return `Payment received, ${data.name}!
+  return `*Deposit Paid — Freerock Solar*
+
 Quote: ${data.quoteId}
+Package: ${data.packageName || '—'}
 Deposit paid: $${data.depositUsd}
 Balance due: $${(data.totalUsd || 0) - (data.depositUsd || 0)}
-Install scheduled: ${data.installDate || 'TBD'}
-Installer: ${data.installerName || 'TBD'} (${data.installerPhone || PHONE})
 
-Track your install: ${SITE_URL}/solar/quote/${data.quoteId}`
+View details: ${SITE_URL}/solar/quote/${data.quoteId}`
+}
+
+export function paymentSuccessShareMessage(data: MessageData): string {
+  return `I just paid my deposit for solar with Freerock! 🔆
+
+Package: ${data.packageName || 'Solar Installation'}
+Deposit paid: $${data.depositUsd}
+
+Get your own quote: ${SITE_URL}/solar`
 }
 
 export function trainingEnrolledMessage(data: MessageData): string {

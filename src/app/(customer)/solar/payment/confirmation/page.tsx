@@ -2,11 +2,11 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useState, Suspense } from 'react'
-import { Copy, MessageCircle, FileDown } from 'lucide-react'
+import { Copy, MessageCircle, FileDown, Share2 } from 'lucide-react'
 import Link from 'next/link'
 import { Container } from '@/components/Container'
 import { formatUSD } from '@/lib/utils'
-import { getWhatsAppLink, paymentConfirmedMessage } from '@/lib/whatsapp'
+import { getWhatsAppLink, getWhatsAppShareLink, paymentConfirmedMessage, paymentSuccessShareMessage } from '@/lib/whatsapp'
 
 interface QuoteData {
   id: string
@@ -57,11 +57,17 @@ function ConfirmationContent() {
     }
   }
 
-  const whatsappLink = getWhatsAppLink(paymentConfirmedMessage({
+  const notifyLink = getWhatsAppLink(paymentConfirmedMessage({
     name: customerName,
     quoteId,
     packageName,
     totalUsd: total,
+    depositUsd: deposit,
+  }))
+
+  const shareLink = getWhatsAppShareLink(paymentSuccessShareMessage({
+    name: customerName,
+    packageName,
     depositUsd: deposit,
   }))
 
@@ -108,8 +114,11 @@ function ConfirmationContent() {
         <button onClick={handleDownloadInvoice} className="block w-full bg-[#228B22] text-white text-center rounded-lg py-3 font-semibold text-sm flex items-center justify-center gap-2">
           <FileDown className="w-4 h-4" /> Download Invoice
         </button>
-        <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="block w-full border border-gray-200 text-gray-700 text-center rounded-lg py-3 font-semibold text-sm flex items-center justify-center gap-2">
-          <MessageCircle className="w-4 h-4 text-green-500" /> Share on WhatsApp
+        <a href={notifyLink} target="_blank" rel="noopener noreferrer" className="block w-full border border-gray-200 text-gray-700 text-center rounded-lg py-3 font-semibold text-sm flex items-center justify-center gap-2">
+          <MessageCircle className="w-4 h-4 text-green-500" /> Notify Freerock on WhatsApp
+        </a>
+        <a href={shareLink} target="_blank" rel="noopener noreferrer" className="block w-full border border-gray-200 text-gray-700 text-center rounded-lg py-3 font-semibold text-sm flex items-center justify-center gap-2">
+          <Share2 className="w-4 h-4 text-gray-500" /> Share with Friend
         </a>
         <Link href="/" className="block w-full bg-[#228B22] text-white text-center rounded-lg py-3 font-semibold text-sm">Back to Home</Link>
         <p className="text-[11px] text-gray-400 text-center pt-2">Install our PWA for a faster experience — add to home screen</p>
