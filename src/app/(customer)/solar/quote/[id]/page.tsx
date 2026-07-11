@@ -168,7 +168,7 @@ function QuotePageContent() {
         {downloadError && <p role="alert" className="text-xs text-red-500 text-center">{downloadError}</p>}
       </Container></section>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-2 items-center">
+      <div className="fixed bottom-[72px] lg:bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-2 items-center z-40">
         {isPaid ? (
           <div className="flex-1 bg-green-50 text-green-700 rounded-lg py-3 font-semibold text-sm text-center">Deposit Paid</div>
         ) : (

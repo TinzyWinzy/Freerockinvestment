@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, FileText, Phone, MessageCircle, ChevronLeft } from 'lucide-react'
+import { Home, Sun, GraduationCap, FileText, Phone, MessageCircle, ChevronLeft } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { getWhatsAppLink } from '@/lib/whatsapp'
@@ -11,7 +11,9 @@ const PAGES_WITH_OWN_HEADER = ['/custom-design', '/audit-repair', '/training', '
 
 const navItems = [
   { icon: Home, label: 'Home', href: '/' },
-  { icon: FileText, label: 'My Quotes', href: '/quotes' },
+  { icon: Sun, label: 'Solar', href: '/solar' },
+  { icon: GraduationCap, label: 'Training', href: '/training' },
+  { icon: FileText, label: 'Quotes', href: '/quotes' },
   { icon: Phone, label: 'Contact', href: '/contact' },
 ]
 
@@ -26,7 +28,9 @@ function needsLayoutHeader(pathname: string): boolean {
 }
 
 function getBackHref(pathname: string): string | null {
-  if (pathname.startsWith('/solar') || pathname === '/custom-design' || pathname === '/audit-repair' || pathname === '/training' || pathname === '/quotes' || pathname === '/contact') return '/'
+  if (pathname.startsWith('/solar/quote') || pathname.startsWith('/solar/payment')) return '/solar'
+  if (pathname.startsWith('/solar')) return '/solar'
+  if (pathname === '/quotes') return '/'
   return null
 }
 
@@ -37,7 +41,7 @@ function getPageTitle(pathname: string): string {
     if (pathname.includes('/quote')) return 'Your Quote'
     if (pathname.includes('/payment/confirmation')) return 'Confirmation'
     if (pathname.includes('/payment')) return 'Payment'
-    return 'Solar Systems'
+    return 'Solar Packages'
   }
   if (pathname === '/custom-design') return 'Custom Design'
   if (pathname === '/audit-repair') return 'Audit & Repair'
@@ -53,10 +57,13 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
   const backHref = getBackHref(pathname)
   const title = getPageTitle(pathname)
 
+  const isHome = pathname === '/'
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex flex-col">
+      {/* ─── Mobile top header (hidden on lg+) ─── */}
       {showHeader && (
-        <header className="glass-header sticky top-0 z-30">
+        <header className="lg:hidden glass-header sticky top-0 z-30">
           <div className="flex items-center h-12 px-4">
             {backHref && (
               <Link
@@ -75,7 +82,11 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         </header>
       )}
 
-      <main className={cn('flex-1 flex flex-col', showHeader ? 'pb-14 lg:pb-0' : 'pb-24 lg:pb-0')}>
+      <main className={cn(
+        'flex-1 flex flex-col',
+        !isHome && 'pb-[72px] lg:pb-0',
+        showHeader && 'pt-12 lg:pt-0'
+      )}>
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -83,7 +94,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className={cn('flex-1 flex flex-col', showHeader ? 'pt-14' : '')}
+            className="flex-1 flex flex-col"
           >
             {children}
           </motion.div>
@@ -91,47 +102,58 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
       </main>
 
       {/* ─── Desktop nav bar ─── */}
-      <header className="hidden lg:flex sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 h-14 items-center px-6">
+      <header className="hidden lg:flex sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 h-14 items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <img src="/logo.jpg" alt="Freerock" className="w-7 h-7 rounded-md object-cover" />
-          <span className="font-bold text-[#1F2937] text-sm">Freerock</span>
+          <Link href="/" className="flex items-center gap-3">
+            <img src="/logo.jpg" alt="Freerock" className="w-7 h-7 rounded-md object-cover" />
+            <span className="font-bold text-[#1F2937] text-sm">Freerock</span>
+          </Link>
+          <nav className="ml-8 flex items-center gap-1">
+            {navItems.map((n) => {
+              const isActive = pathname === n.href || (n.href !== '/' && pathname.startsWith(n.href))
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                    isActive ? 'text-[#228B22] bg-[#228B22]/10' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                  )}
+                >
+                  {n.label}
+                </Link>
+              )
+            })}
+          </nav>
         </div>
-        <nav className="ml-10 flex items-center gap-1">
-          {navItems.map((n) => {
-            const isActive = pathname === n.href
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive ? 'text-[#228B22] bg-[#228B22]/10' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
-                )}
-              >
-                {n.label}
-              </Link>
-            )
-          })}
-        </nav>
+        <div className="flex items-center gap-2">
+          {!isHome && backHref && (
+            <Link
+              href={backHref}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </Link>
+          )}
+          <a
+            href={getWhatsAppLink("Hi Freerock, I'd like to find out more about your solar services.")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            WhatsApp
+          </a>
+        </div>
       </header>
 
-      {/* ─── Floating WhatsApp (hidden on lg+) ─── */}
+      {/* ─── Mobile floating WhatsApp (hidden on lg+) ─── */}
       <a
         href={getWhatsAppLink("Hi Freerock, I'd like to find out more about your solar services.")}
         target="_blank"
         rel="noopener noreferrer"
-        className="lg:hidden fixed bottom-20 right-4 z-40 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl pl-4 pr-5 py-3 flex items-center gap-2.5 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-[0_8px_24px_rgba(37,211,102,0.35)]"
-      >
-        <MessageCircle className="w-5 h-5" />
-        WhatsApp
-      </a>
-
-      {/* ─── Desktop WhatsApp button ─── */}
-      <a
-        href={getWhatsAppLink("Hi Freerock, I'd like to find out more about your solar services.")}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hidden lg:flex fixed bottom-6 right-6 z-40 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl pl-4 pr-5 py-3 items-center gap-2.5 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
+        className="lg:hidden fixed bottom-[88px] right-4 z-40 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl pl-4 pr-5 py-3 flex items-center gap-2.5 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
       >
         <MessageCircle className="w-5 h-5" />
         WhatsApp
@@ -141,7 +163,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="glass-nav flex items-center justify-around h-[72px] shadow-[0_-2px_20px_rgba(0,0,0,0.04)]">
           {navItems.map((n) => {
-            const isActive = pathname === n.href
+            const isActive = pathname === n.href || (n.href !== '/' && pathname.startsWith(n.href))
             return (
               <Link
                 key={n.href}
@@ -152,12 +174,12 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                 )}
               >
                 {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-[#228B22] rounded-b-full shadow-[0_0_10px_rgba(34,139,34,0.25)]" />
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] bg-[#228B22] rounded-b-full" />
                 )}
-                <div className={cn('w-7 h-7 flex items-center justify-center rounded-xl transition-all duration-200', isActive ? 'bg-[#228B22]/10 scale-110' : '')}>
+                <div className={cn('w-6 h-6 flex items-center justify-center rounded-lg transition-all duration-200', isActive ? 'scale-110' : '')}>
                   <n.icon className="w-[18px] h-[18px]" />
                 </div>
-                <span className={cn('text-[10px] font-medium tracking-tight transition-all', isActive ? 'font-bold' : '')}>{n.label}</span>
+                <span className={cn('text-[10px] font-medium tracking-tight', isActive ? 'font-bold' : '')}>{n.label}</span>
               </Link>
             )
           })}
