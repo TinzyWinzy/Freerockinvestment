@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { SOLAR_PACKAGES } from '@/lib/constants'
 import { formatUSD } from '@/lib/utils'
@@ -100,9 +101,12 @@ function QuotePageContent() {
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh pb-24">
-      <header className="bg-freerock px-4 pt-8 pb-6 text-white">
-        <h1 className="text-xl font-bold">Your Quote</h1>
-        <p className="text-sm text-white/80 mt-1">#{quote.id}</p>
+      <header className="relative overflow-hidden bg-freerock px-4 pt-8 pb-6 text-white">
+        <Image src="/images/backview.jpg" alt="" fill className="object-cover opacity-20" sizes="100vw" priority />
+        <div className="relative z-10">
+          <h1 className="text-xl font-bold">Your Quote</h1>
+          <p className="text-sm text-white/80 mt-1">#{quote.id}</p>
+        </div>
       </header>
 
       <section className="flex-1 py-4 space-y-4"><Container>

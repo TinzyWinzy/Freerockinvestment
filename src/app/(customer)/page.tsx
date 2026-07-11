@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import Image from 'next/image'
 import { motion, useInView } from 'framer-motion'
 import { Sun, Ruler, Search, GraduationCap, ShieldCheck, ChevronRight, Zap, Play, Clock } from 'lucide-react'
 import Link from 'next/link'
@@ -12,6 +13,13 @@ const services = [
   { icon: Ruler, title: 'Custom Design', desc: '3D visualization & annual simulation', href: '/custom-design', color: '#2563EB' },
   { icon: Search, title: 'Audit & Repair', desc: 'Energy audit, fault finding, diagnosis', href: '/audit-repair', color: '#D97706' },
   { icon: GraduationCap, title: 'Solar Training', desc: '2-week certified installation course', href: '/training', color: '#7C3AED' },
+]
+
+const installPhotos = [
+  { src: '/images/workersolar.jpg', alt: 'Solar installation team on site' },
+  { src: '/images/backview.jpg', alt: 'Back view of solar panel installation' },
+  { src: '/images/fixing-inv.jpg', alt: 'Inverter installation and wiring' },
+  { src: '/images/teamworking.jpg', alt: 'Freerock team working on a solar project' },
 ]
 
 const containerVariants = {
@@ -44,10 +52,13 @@ export default function Home() {
           inherits: false;
           initial-value: 0;
         }
-        .hero-grad {
-          background: linear-gradient(145deg, #0a2e0a 0%, #1a6b1a 25%, #3a8a3a 50%, #8a9a3a 75%, #c4a83d 100%);
-          background-size: 200% 200%;
-          animation: dawnShift 20s ease infinite;
+        .hero-overlay {
+          background: linear-gradient(145deg, rgba(10,46,10,0.88) 0%, rgba(26,107,26,0.7) 30%, rgba(58,138,58,0.45) 60%, rgba(10,46,10,0.8) 100%);
+        }
+        .trust-grad {
+          background: linear-gradient(135deg, #f0fdf4, #dcfce7, #bbf7d0, #dcfce7, #f0fdf4);
+          background-size: 300% 300%;
+          animation: dawnShift 10s ease infinite;
         }
         @keyframes dawnShift {
           0% { background-position: 0% 0%; }
@@ -111,11 +122,6 @@ export default function Home() {
           0%, 100% { transform: translate(0, 0); opacity: 0.5; }
           50% { transform: translate(15px, -20px); opacity: 1; }
         }
-        .trust-grad {
-          background: linear-gradient(135deg, #f0fdf4, #dcfce7, #bbf7d0, #dcfce7, #f0fdf4);
-          background-size: 300% 300%;
-          animation: dawnShift 10s ease infinite;
-        }
         .trust-fl-1 {
           position: absolute; top: -30px; right: -20px;
           width: 120px; height: 120px; border-radius: 50%;
@@ -145,7 +151,6 @@ export default function Home() {
           to { --num: 25; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .hero-grad, .trust-grad { animation: none; }
           .sunburst { animation: none; display: none; }
           .float-shape { animation: none; display: none; }
           .trust-fl-1, .trust-fl-2 { animation: none; }
@@ -154,8 +159,18 @@ export default function Home() {
       `}</style>
 
       <div className="flex flex-col min-h-full pb-24">
-        {/* ─── Hero: Dawn Over Zimbabwe ─── */}
-        <section className="relative overflow-hidden hero-grad px-6 pt-16 pb-8 text-white min-h-[520px] flex flex-col justify-between">
+
+        {/* ─── Hero: Full-bleed image with overlay ─── */}
+        <section className="relative overflow-hidden px-6 pt-16 pb-8 text-white min-h-[560px] flex flex-col justify-between">
+          <Image
+            src="/images/Hero.jpg"
+            alt="Freerock solar installation"
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 hero-overlay" />
           <div className="sunburst" />
           <div className="float-shape float-1" />
           <div className="float-shape float-2" />
@@ -275,6 +290,38 @@ export default function Home() {
             </motion.div>
           </Container>
         </section>
+
+        {/* ─── Installation Gallery ─── */}
+        <Container className="mt-6">
+          <motion.section
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <h2 className="text-lg font-bold text-[#1F2937] mb-3">Our Work</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {installPhotos.map((photo, i) => (
+                <motion.div
+                  key={photo.src}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="relative overflow-hidden rounded-xl aspect-[4/3]"
+                >
+                  <Image
+                    src={photo.src}
+                    alt={photo.alt}
+                    fill
+                    className="object-cover hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
+        </Container>
 
         {/* ─── Trust Badge: Pay AFTER Installation ─── */}
         <Container className="mt-5">

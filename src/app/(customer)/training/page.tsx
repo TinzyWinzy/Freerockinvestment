@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { GraduationCap, BookOpen, Calendar, MapPin, DollarSign, Check, MessageCircle, Home } from 'lucide-react'
 import Link from 'next/link'
 import { TRAINING } from '@/lib/constants'
@@ -120,9 +121,12 @@ export default function TrainingPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh">
-      <header className="bg-freerock px-4 pt-8 pb-6 text-white">
-        <h1 className="text-xl font-bold">Solar Training</h1>
-        <p className="text-sm text-white/80 mt-1">2-week certified solar installation course</p>
+      <header className="relative overflow-hidden bg-freerock px-4 pt-8 pb-6 text-white">
+        <Image src="/images/class.jpg" alt="" fill className="object-cover opacity-20" sizes="100vw" priority />
+        <div className="relative z-10">
+          <h1 className="text-xl font-bold">Solar Training</h1>
+          <p className="text-sm text-white/80 mt-1">2-week certified solar installation course</p>
+        </div>
       </header>
 
       <Container className="py-4 space-y-4">

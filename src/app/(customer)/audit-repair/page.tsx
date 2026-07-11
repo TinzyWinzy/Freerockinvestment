@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Search, ClipboardCheck, Wrench, DollarSign, Home, type LucideIcon } from 'lucide-react'
 import { AUDIT_SERVICES } from '@/lib/constants'
@@ -90,9 +91,12 @@ export default function AuditRepairPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh">
-      <header className="bg-freerock px-4 pt-8 pb-6 text-white">
-        <h1 className="text-xl font-bold">Audit & Repair</h1>
-        <p className="text-sm text-white/80 mt-1">Energy audit, fault finding, system diagnosis</p>
+      <header className="relative overflow-hidden bg-freerock px-4 pt-8 pb-6 text-white">
+        <Image src="/images/fixing-inv.jpg" alt="" fill className="object-cover opacity-20" sizes="100vw" priority />
+        <div className="relative z-10">
+          <h1 className="text-xl font-bold">Audit & Repair</h1>
+          <p className="text-sm text-white/80 mt-1">Energy audit, fault finding, system diagnosis</p>
+        </div>
       </header>
 
       <form onSubmit={handleSubmit} className="flex-1 py-4 space-y-4" noValidate><Container>

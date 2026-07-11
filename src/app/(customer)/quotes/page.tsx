@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { FileText, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
@@ -47,9 +48,12 @@ export default function QuotesPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh">
-      <header className="bg-freerock px-4 pt-8 pb-6 text-white">
-        <h1 className="text-xl font-bold">My Quotes</h1>
-        <p className="text-sm text-white/80 mt-1">Your saved solar quotes</p>
+      <header className="relative overflow-hidden bg-freerock px-4 pt-8 pb-6 text-white">
+        <Image src="/images/teamworking.jpg" alt="" fill className="object-cover opacity-20" sizes="100vw" priority />
+        <div className="relative z-10">
+          <h1 className="text-xl font-bold">My Quotes</h1>
+          <p className="text-sm text-white/80 mt-1">Your saved solar quotes</p>
+        </div>
       </header>
 
       <section className="flex-1 py-4"><Container>

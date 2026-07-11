@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ShieldCheck, Zap, ArrowRight, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -88,8 +89,10 @@ function SolarPageContent() {
   return (
     <div className="flex flex-col flex-1 pb-5">
       <Container>
-        <section className="pt-5 pb-3">
-        <div className="flex items-center gap-3 mb-1">
+        <section className="relative overflow-hidden rounded-2xl pt-5 pb-3">
+          <Image src="/images/packages.jpg" alt="" fill className="object-cover opacity-15" sizes="100vw" priority />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#F9FAFB]/0 via-[#F9FAFB]/60 to-[#F9FAFB]" />
+        <div className="relative z-10 flex items-center gap-3 mb-1">
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
